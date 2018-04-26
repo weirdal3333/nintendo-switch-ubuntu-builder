@@ -124,6 +124,7 @@ AutomaticLogin = switch
 EOF
 
 # Configuration: touchscreen config
+# https://github.com/fail0verflow/shofel2/blob/master/configs/xinitrc-header.sh
 # FIXME: Not sure if this is actually getting applied.
 cat <<EOF > $chroot_dir/etc/X11/Xsession.d/01-nintendo-switch-fixups
 xinput set-float-prop stmfts 'Coordinate Transformation Matrix' 0 -1 1 1 0 0 0 0 1

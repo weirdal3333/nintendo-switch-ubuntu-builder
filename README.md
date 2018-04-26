@@ -4,6 +4,7 @@ I run this on an x86_64 Ubuntu Artful server and in theory it should be self-con
 
 TODO:
  * 3D acceleration (rebuild Mesa packages from git, possibly leveraging any packaging differences in https://launchpad.net/~oibaf/+archive/ubuntu/graphics-drivers/+packages)
+  * Once this is working, there's some kind of `DRI_PRIME` offloading that can be done, see https://github.com/fail0verflow/shofel2/blob/master/configs/xinitrc-header.sh
  * Getting Xorg to rotate the screen *and* have the touchscreen input on the right axes, has been challenging (there are so many damn X startup files)
  * WiFi only works on a second boot (this seems to be affecting everyone doing Switch linux)
  * Bluetooth almost works, but the MAC address is AA-AA-AA-etc and pairing doesn't happen
