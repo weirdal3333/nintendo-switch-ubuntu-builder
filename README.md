@@ -1,14 +1,16 @@
-Script (derived from https://github.com/docker-32bit/ubuntu) to generate Ubuntu 32bit Docker images.
+Script (derived from https://github.com/osrf/multiarch-docker-image-generation) to generate Ubuntu 64bit ARM images for Nintendo Switch.
 
-The generated Docker images are available via [DockerHub](https://registry.hub.docker.com/u/osrf/ubuntu_32bit/).
+I run this on an x86_64 Ubuntu Artful server and in theory it should be self-contained. It produces `bionic.tgz` which I unpack onto a freshly formatted SD card (second partition of course. First partition needs to be a small, formatted FAT32). I'm booting it on the Switch using fail0verflow's exploit chain and kernel.
 
-#### Note:
-In order to run docker images derived from a different platform architecture than the host (the architecture used to run the docker engine), the host kernel still needs to be configured to enable the binfmt-support for the foreign architecture. This can be done by simply via:  
-`$ sudo apt install qemu-user-static`
+TODO:
+ * 3D acceleration (rebuild Mesa packages from git, possibly leveraging any packaging differences in https://launchpad.net/~oibaf/+archive/ubuntu/graphics-drivers/+packages)
+ * Getting Xorg to rotate the screen *and* have the touchscreen input on the right axes, has been challenging (there are so many damn X startup files)
+ * WiFi only works on a second boot (this seems to be affecting everyone doing Switch linux)
+ * Bluetooth almost works, but the MAC address is AA-AA-AA-etc and pairing doesn't happen
+ * Investigate getting the f0f patches onto an Ubuntu kernel, since they do package upstream releases (maybe not recent enough ones though?)
 
-Additionally, the runtime in the container will need access to qemu-<arch>-static binaries. This can be done two ways; by either mounting those binaries from the host to `user/bin/` inside the container, or baking them into the image itself from the get-go (as done here in this repo's bootstrap setup).
-
-In order to use the bootstrap tooling, `debootstrap` must be installed. This can be done by simply via: 
-`$ sudo apt install debootstrap`
-
-Additionally when building from a different platform architecture than the target image, i.e. the architecture used to run the debootstrap and docker engine vs the architecture inside the source chroot, the host will again need binfmt-support for the kernel. As the debootstrap process downloads and copies in the qemu static binaries for emulation into the chroot before any execution is done inside the chroot, installing the qemu static binaries onto the host is then not essential.
+What does work:
+ * It boots into X and the Ubuntu desktop session
+ * touchscreen works (just off axis)
+ * volume buttons
+ * backlight (which I want to disable, because it changes the backlight very aggressively and it's super annoying)
