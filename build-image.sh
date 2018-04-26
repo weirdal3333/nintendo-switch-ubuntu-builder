@@ -89,11 +89,10 @@ chroot $chroot_dir apt-get -qy install \
         accountsservice \
         xserver-xorg-core \
         xserver-xorg \
-        xserver-xorg-input-all \
+        xserver-xorg-input-evdev \
         xserver-xorg-video-nouveau \
         linux-firmware \
         libgl1-mesa-dri \
-        onboard \
         bluez \
         sudo
 
