@@ -154,6 +154,7 @@ EOF
 #EOF
 
 # Configuration: Add missing firmware definition file for Broadcom driver
+# https://bugzilla.kernel.org/show_bug.cgi?id=185661
 cat <<EOF > $chroot_dir/lib/firmware/brcm/brcmfmac4356-pcie.txt
 # Sample variables file for BCM94356Z NGFF 22x30mm iPA, iLNA board with PCIe for production package
 NVRAMRev=$Rev: 492104 $
