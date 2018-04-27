@@ -9,9 +9,12 @@ TODO:
  * WiFi only works on a second boot (this seems to be affecting everyone doing Switch linux)
  * Bluetooth almost works, but the MAC address is AA-AA-AA-etc and pairing doesn't happen
  * Investigate getting the f0f patches onto an Ubuntu kernel, since they do package upstream releases (maybe not recent enough ones though?)
+ * locales are not configured, which causes issues with various things (sudo dpkg-reconfigure -plow locales is helpful, but we ought to be able to automate this)
+ * GDM isn't rotated properly if it's ever needed (e.g. restarting the session from gnome-control-center doesn't automatically log back in)
 
 What does work:
  * It boots into X and the Ubuntu desktop session
  * touchscreen works (just off axis)
  * volume buttons
  * backlight (which I want to disable, because it changes the backlight very aggressively and it's super annoying)
+ * once you're on wifi (i.e. you've done a soft reboot and run the f0f boot chain again) you can enable https://help.gnome.org/users/gnome-help/stable/sharing-desktop.html.en which is very helpful! (also you can ssh to switch@switch.local with the password `switch`)
