@@ -96,6 +96,17 @@ chroot $chroot_dir apt-get -qy install \
         bluez \
         sudo
 
+### install some newer packages from my PPA
+chroot $chroot_dir add-apt-repository -y ppa:cmsj/nintendoswitch
+chroot $chroot_dir apt-get -qy install libdrm-common libdrm-nouveau2 libdrm2
+
+### install RetroArch PPA
+chroot $chroot_dir add-apt-repository -y ppa:libretro/stable
+chroot $chroot_dir apt-get -qy install retroarch libretro-*
+
+### install Dolphin PPA
+chroot $chroot_dir add-apt-repository -y ppa:dolphin-emu/ppa
+chroot $chroot_dir apt-get -qy install dolphin-emu-master
 
 # Configuration: DNS
 cat <<EOF > $chroot_dir/etc/resolv.conf
