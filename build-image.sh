@@ -104,7 +104,7 @@ nameserver 1.1.1.1
 EOF
 
 # Configuration: user (username: switch password: switch)
-chroot $chroot_dir useradd -d /home/switch -p Q4OiRew2o/3Fk switch
+chroot $chroot_dir useradd -m -s /bin/bash -d /home/switch -p Q4OiRew2o/3Fk switch
 if ! [ -d $chroot_dir/home/switch ]; then
   # Really not sure why useradd isn't making this
   mkdir -p $chroot_dir/home/switch
