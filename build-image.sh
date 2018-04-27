@@ -95,6 +95,7 @@ chroot $chroot_dir apt-get -qy install \
         libgl1-mesa-dri \
         bluez \
         driconf \
+        quicksynergy \
         sudo
 
 ### install some newer packages from my PPA
