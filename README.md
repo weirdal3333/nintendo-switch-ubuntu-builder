@@ -8,7 +8,8 @@ TODO:
  * Getting Xorg to rotate the screen *and* have the touchscreen input on the right axes, has been challenging (there are so many damn X startup files)
  * WiFi only works on a second boot (this seems to be affecting everyone doing Switch linux)
  * Bluetooth almost works, but the MAC address is AA-AA-AA-etc and pairing doesn't happen
- * Investigate getting the f0f patches onto an Ubuntu kernel, since they do package upstream releases (maybe not recent enough ones though?)
+ * Investigate getting the f0f patches onto an Ubuntu kernel, since they do package upstream releases. Need to find a suitable 4.16 package.
+ * Investigate if we can store the kernel and dtb inside the rootfs image and change the switch.scr u-boot script to use ext4load, to load them both, rather than have them live on the exploit host
  * locales are not configured, which causes issues with various things (sudo dpkg-reconfigure -plow locales is helpful, but we ought to be able to automate this)
  * GDM isn't rotated properly if it's ever needed (e.g. restarting the session from gnome-control-center doesn't automatically log back in)
  * Get audio working
