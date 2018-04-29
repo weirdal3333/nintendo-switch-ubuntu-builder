@@ -1,5 +1,10 @@
-#!/bin/bash -x
+#!/bin/bash
 ### Build a filesystem image for Nintendo Switch
+
+if [ "$1" == "--help" ]; then
+    echo "Usage $0 [--all]"
+    exit 1
+fi
 
 # Sources:
 # https://wiki.debian.org/Debootstrap
@@ -104,11 +109,15 @@ chroot $chroot_dir apt-get -qy install libdrm-common libdrm-nouveau2 libdrm2
 
 ### install RetroArch PPA
 chroot $chroot_dir add-apt-repository -y ppa:libretro/stable
-chroot $chroot_dir apt-get -qy install retroarch libretro-*
 
 ### install Dolphin PPA
 chroot $chroot_dir add-apt-repository -y ppa:dolphin-emu/ppa
-chroot $chroot_dir apt-get -qy install dolphin-emu-master
+
+### install RetrpArch and Dolphin
+if [ "$1" == "--all" ]; then
+    chroot $chroot_dir apt-get -qy install dolphin-emu-master
+    chroot $chroot_dir apt-get -qy install retroarch libretro-*
+fi
 
 # Configuration: DNS
 cat <<EOF > $chroot_dir/etc/resolv.conf
