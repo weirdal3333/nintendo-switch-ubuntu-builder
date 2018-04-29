@@ -14,6 +14,8 @@ TODO:
  * GDM isn't rotated properly if it's ever needed (e.g. restarting the session from gnome-control-center doesn't automatically log back in)
  * Get audio working
  * Get USB working
+ * Graphical boot screen instead of text console
+ * Provide an all-in-one SD card image that self-expands on first boot (like Raspberry Pi does)
 
 What does work:
  * It boots into X and the Ubuntu desktop session with 3D acceleration (although it doesn't seem to be very fast)
