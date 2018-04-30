@@ -1,4 +1,4 @@
 dist: trusty
 sudo: required
 script:
-    - sudo ./build-image.sh
+    - sudo bash -x ./build-image.sh
