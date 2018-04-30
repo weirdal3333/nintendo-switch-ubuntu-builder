@@ -38,7 +38,7 @@ foreign_arg=''
 if [ $arch == 'arm64' ]; then
   foreign_arg='--foreign'
 fi
-debootstrap $foreign_arg --variant=minbase --arch=$arch $suite $chroot_dir $apt_mirror
+debootstrap --verbose $foreign_arg --variant=minbase --arch=$arch $suite $chroot_dir $apt_mirror
 
 echo "Creating base image chroot, second stage..."
 cp qemu-aarch64-static $chroot_dir/usr/bin/
