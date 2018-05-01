@@ -101,6 +101,8 @@ chroot $chroot_dir apt-get -qy install \
         bluez \
         driconf \
         quicksynergy \
+        gnome-tweak-tool \
+        materia-gtk-theme \
         sudo
 
 ### install some newer packages from my PPA
