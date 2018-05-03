@@ -30,6 +30,7 @@ apt-get install -qy debootstrap qemu-user-static
 # rebuilds that have been observed at the deboostrap minbase stage
 echo "Removing existing chroot..."
 rm -rf "$chroot_dir"
+rm -f "${os}_${arch}_${suite}.tgz"
 
 ### install a minbase system with debootstrap
 echo "Creating base image chroot, first stage..."
