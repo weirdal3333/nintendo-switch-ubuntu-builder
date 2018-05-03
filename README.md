@@ -12,7 +12,7 @@ TODO:
  * Investigate if we can store the kernel and dtb inside the rootfs image and change the switch.scr u-boot script to use ext4load, to load them both, rather than have them live on the exploit host
  * locales are not configured, which causes issues with various things (sudo dpkg-reconfigure -plow locales is helpful, but we ought to be able to automate this)
  * GDM isn't rotated properly if it's ever needed (e.g. restarting the session from gnome-control-center doesn't automatically log back in)
- * Get audio working
+ * Get audio working (datasheet for codec chip is https://wenku.baidu.com/view/25f933653a3567ec102de2bd960590c69ec3d8bc.html)
  * Get USB working
  * Graphical boot screen instead of text console
  * Provide an all-in-one SD card image that self-expands on first boot (like Raspberry Pi does)
