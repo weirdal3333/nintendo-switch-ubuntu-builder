@@ -19,7 +19,7 @@ arch=arm64
 suite=bionic
 apt_mirror='http://ports.ubuntu.com'
 repositories='main restricted universe multiverse'
-chroot_dir="/var/chroot/${os}_${arch}_$suite"
+chroot_dir="${1:-/var/chroot/${os}_${arch}_$suite}"
 
 ### make sure that the required tools are installed
 echo "Installing dependencies..."
@@ -29,7 +29,7 @@ apt-get install -qy debootstrap qemu-user-static
 # This is tp prevent a corrupted chroot dir to break repeated failed
 # rebuilds that have been observed at the deboostrap minbase stage
 echo "Removing existing chroot..."
-rm -rf $chroot_dir
+rm -rf "$chroot_dir"
 
 ### install a minbase system with debootstrap
 echo "Creating base image chroot, first stage..."
@@ -38,51 +38,51 @@ foreign_arg=''
 if [ $arch == 'arm64' ]; then
   foreign_arg='--foreign'
 fi
-debootstrap --verbose $foreign_arg --variant=minbase --arch=$arch $suite $chroot_dir $apt_mirror
+debootstrap --verbose $foreign_arg --variant=minbase --arch=$arch $suite "$chroot_dir" $apt_mirror
 
 echo "Creating base image chroot, second stage..."
-cp qemu-aarch64-static $chroot_dir/usr/bin/
-LC_ALL=C LANGUAGE=C LANG=C chroot $chroot_dir /debootstrap/debootstrap --second-stage
-LC_ALL=C LANGUAGE=C LANG=C chroot $chroot_dir dpkg --configure -a
+cp /usr/bin/qemu-aarch64-static "$chroot_dir/usr/bin/"
+LC_ALL=C LANGUAGE=C LANG=C chroot "$chroot_dir" /debootstrap/debootstrap --second-stage
+LC_ALL=C LANGUAGE=C LANG=C chroot "$chroot_dir" dpkg --configure -a
 
 ### set the hostname
-echo "switch" > $chroot_dir/etc/hostname
+echo "switch" > "$chroot_dir/etc/hostname"
 
 ### update the list of package sources
-cat <<EOF > $chroot_dir/etc/apt/sources.list
+cat <<EOF > "$chroot_dir/etc/apt/sources.list"
 deb $apt_mirror $suite $repositories
 deb $apt_mirror $suite-updates $repositories
 deb $apt_mirror $suite-backports $repositories
 EOF
 
 # prevent init scripts from running during install/update
-echo '#!/bin/sh' > $chroot_dir/usr/sbin/policy-rc.d
-echo 'exit 101' >> $chroot_dir/usr/sbin/policy-rc.d
-chmod +x $chroot_dir/usr/sbin/policy-rc.d
+echo '#!/bin/sh' > "$chroot_dir/usr/sbin/policy-rc.d"
+echo 'exit 101' >> "$chroot_dir/usr/sbin/policy-rc.d"
+chmod +x "$chroot_dir/usr/sbin/policy-rc.d"
 
 # force dpkg not to call sync() after package extraction (speeding up installs)
-echo 'force-unsafe-io' > $chroot_dir/etc/dpkg/dpkg.cfg.d/swibuntu-apt-speedup
+echo 'force-unsafe-io' > "$chroot_dir/etc/dpkg/dpkg.cfg.d/swibuntu-apt-speedup"
 
 # _keep_ us lean by effectively running "apt-get clean" after every install
-echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' > $chroot_dir/etc/apt/apt.conf.d/swibuntu-clean
-echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' >> $chroot_dir/etc/apt/apt.conf.d/swibuntu-clean
-echo 'Dir::Cache::pkgcache ""; Dir::Cache::srcpkgcache "";' >> $chroot_dir/etc/apt/apt.conf.d/swibuntu-clean
+echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' > "$chroot_dir/etc/apt/apt.conf.d/swibuntu-clean"
+echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' >> "$chroot_dir/etc/apt/apt.conf.d/swibuntu-clean"
+echo 'Dir::Cache::pkgcache ""; Dir::Cache::srcpkgcache "";' >> "$chroot_dir/etc/apt/apt.conf.d/swibuntu-clean"
 
 # remove apt-cache translations for fast "apt-get update"
-echo 'Acquire::Languages "none";' > $chroot_dir/etc/apt/apt.conf.d/swibuntu-no-languages
+echo 'Acquire::Languages "none";' > "$chroot_dir/etc/apt/apt.conf.d/swibuntu-no-languages"
 
 # store Apt lists files gzipped on-disk for smaller size
-echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > $chroot_dir/etc/apt/apt.conf.d/swibuntu-gzip-indexes
+echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > "$chroot_dir/etc/apt/apt.conf.d/swibuntu-gzip-indexes"
 
 # man-db does not work via qemu-user
-chroot $chroot_dir dpkg-divert --local --rename --add /usr/bin/mandb
-chroot $chroot_dir ln -sf /bin/true /usr/bin/mandb
+chroot "$chroot_dir" dpkg-divert --local --rename --add /usr/bin/mandb
+chroot "$chroot_dir" ln -sf /bin/true /usr/bin/mandb
 
-mount -o bind /proc $chroot_dir/proc
+mount -o bind /proc "$chroot_dir/proc"
 
 ### install ubuntu-desktop
-chroot $chroot_dir apt-get update
-chroot $chroot_dir apt-get -qy install \
+chroot "$chroot_dir" apt-get update
+chroot "$chroot_dir" apt-get -qy install \
         ubuntu-minimal \
         ubuntu-desktop \
         openssh-server \
@@ -105,39 +105,40 @@ chroot $chroot_dir apt-get -qy install \
         materia-gtk-theme \
         sudo
 
+### generate at least a basic locale
+chroot "$chroot_dir" locale-gen en_US.UTF8
+
 ### install some newer packages from my PPA
-chroot $chroot_dir add-apt-repository -y ppa:cmsj/nintendoswitch
-chroot $chroot_dir apt-get -qy install libdrm-common libdrm-nouveau2 libdrm2
+chroot "$chroot_dir" add-apt-repository -y ppa:cmsj/nintendoswitch
+chroot "$chroot_dir" apt-get -qy install libdrm-common libdrm-nouveau2 libdrm2
 
 ### install RetroArch PPA
-chroot $chroot_dir add-apt-repository -y ppa:libretro/stable
+chroot "$chroot_dir" add-apt-repository -y ppa:libretro/stable
 
 ### install Dolphin PPA
-chroot $chroot_dir add-apt-repository -y ppa:dolphin-emu/ppa
+chroot "$chroot_dir" add-apt-repository -y ppa:dolphin-emu/ppa
 
-### install RetrpArch and Dolphin
-if [ "$1" == "--all" ]; then
-    chroot $chroot_dir apt-get -qy install dolphin-emu-master
-    chroot $chroot_dir apt-get -qy install retroarch libretro-*
-fi
+### install RetroArch and Dolphin
+#chroot "$chroot_dir" apt-get -qy install dolphin-emu-master
+#chroot '$chroot_dir" apt-get -qy install retroarch libretro-*
 
 # Configuration: DNS
-cat <<EOF > $chroot_dir/etc/resolv.conf
+cat <<EOF > "$chroot_dir/etc/resolv.conf"
 nameserver 8.8.8.8
 nameserver 1.1.1.1
 EOF
 
 # Configuration: user (username: switch password: switch)
-chroot $chroot_dir useradd -m -s /bin/bash -d /home/switch -p Q4OiRew2o/3Fk switch
-if ! [ -d $chroot_dir/home/switch ]; then
+chroot "$chroot_dir" useradd -m -s /bin/bash -d /home/switch -p Q4OiRew2o/3Fk switch
+if ! [ -d "$chroot_dir/home/switch" ]; then
   # Really not sure why useradd isn't making this
-  mkdir -p $chroot_dir/home/switch
-  chown 1000:1000 $chroot_dir/home/switch
+  mkdir -p "$chroot_dir/home/switch"
+  chown 1000:1000 "$chroot_dir/home/switch"
 fi
-chroot $chroot_dir adduser switch sudo
+chroot "$chroot_dir" adduser switch sudo
 
 # Configuration: autologin
-cat <<EOF > $chroot_dir/etc/gdm3/custom.conf
+cat <<EOF > "$chroot_dir/etc/gdm3/custom.conf"
 [daemon]
 AutomaticLoginEnable = true
 AutomaticLogin = switch
@@ -150,13 +151,13 @@ EOF
 # Configuration: touchscreen config
 # https://github.com/fail0verflow/shofel2/blob/master/configs/xinitrc-header.sh
 # FIXME: Not sure if this is actually getting applied.
-cat <<EOF > $chroot_dir/etc/X11/Xsession.d/01-nintendo-switch-fixups
+cat <<EOF > "$chroot_dir/etc/X11/Xsession.d/01-nintendo-switch-fixups"
 xinput set-float-prop stmfts 'Coordinate Transformation Matrix' 0 -1 1 1 0 0 0 0 1
 xrandr --output DSI-1 --rotate left
 EOF
 
 # FIXME: Not sure if this is actually getting applied. Xorg log suggests yes, but something isn't working
-cat <<EOF > $chroot_dir/usr/share/X11/xorg.conf.d/99-nintendo-switch-touchscreen.conf
+cat <<EOF > "$chroot_dir/usr/share/X11/xorg.conf.d/99-nintendo-switch-touchscreen.conf"
 Section "InputClass"
         Identifier "evdev touchscreen catchall"
         MatchIsTouchscreen "on"
@@ -171,7 +172,7 @@ EOF
 
 # FIXME: Above didn't work, so there's a hack below
 # FIXME: This sucks, and since the touch input is still wrong, this doesn't help very much
-#cat <<EOF > $chroot_dir/etc/xdg/autostart/switch-rotate.desktop
+#cat <<EOF > "$chroot_dir/etc/xdg/autostart/switch-rotate.desktop"
 #[Desktop Entry]
 #Name=Set Screen Rotation
 #Exec=/bin/bash -c "sleep 10 && xrandr --output DSI-1 --rotate left"
@@ -180,9 +181,9 @@ EOF
 
 # Configuration: Add missing firmware definition file for Broadcom driver
 # https://bugzilla.kernel.org/show_bug.cgi?id=185661
-cat <<EOF > $chroot_dir/lib/firmware/brcm/brcmfmac4356-pcie.txt
+cat <<EOF > "$chroot_dir/lib/firmware/brcm/brcmfmac4356-pcie.txt"
 # Sample variables file for BCM94356Z NGFF 22x30mm iPA, iLNA board with PCIe for production package
-NVRAMRev=$Rev: 492104 $
+NVRAMRev=\$Rev: 492104 $
 #4356 chip = 4354 A2 chip
 sromrev=11
 boardrev=0x1102
@@ -309,7 +310,7 @@ rssicorrnorm5g_c1=1,2,3,2,2,2,7,7,8,7,7,8
 EOF
 
 # Configuration: Capture lots of information onto SD, since I still can't actually execute stuff directly on the Switch
-cat <<EOF > $chroot_dir/etc/rc.local
+cat <<EOF > "$chroot_dir/etc/rc.local"
 #!/bin/sh
 journalctl --flush
 ifconfig -a >/tmp/ifconfig.txt
@@ -322,22 +323,22 @@ cat /sys/class/drm/card1/device/pstate >/tmp/gpu_pstate.txt
 cat /sys/kernel/debug/dri/1/pstate >>/tmp/gpu_pstate.txt
 sync
 EOF
-chmod +x $chroot_dir/etc/rc.local
+chmod +x "$chroot_dir/etc/rc.local"
 
 # Cleanup: man-db does not work via qemu-user
-chroot $chroot_dir rm /usr/bin/mandb
-chroot $chroot_dir dpkg-divert --local --rename --remove /usr/bin/mandb
+chroot "$chroot_dir" rm /usr/bin/mandb
+chroot "$chroot_dir" dpkg-divert --local --rename --remove /usr/bin/mandb
 
 ### cleanup and unmount /proc
-chroot $chroot_dir apt-get autoclean
-chroot $chroot_dir apt-get clean
-chroot $chroot_dir apt-get autoremove
-rm $chroot_dir/etc/resolv.conf
-umount $chroot_dir/proc
+chroot "$chroot_dir" apt-get autoclean
+chroot "$chroot_dir" apt-get clean
+chroot "$chroot_dir" apt-get autoremove
+rm "$chroot_dir/etc/resolv.conf"
+umount "$chroot_dir/proc"
 
 ### create a tar archive from the chroot directory
-tar cfz $os_$arch_$suite.tgz -C $chroot_dir .
+tar cfz ${os}_${arch}_${suite}.tgz -C "$chroot_dir" .
 
 # ### cleanup
 #rm $os_$arch_$suite.tgz
-#rm -rf $chroot_dir
+#rm -rf "$chroot_dir"
