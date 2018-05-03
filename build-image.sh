@@ -106,7 +106,7 @@ chroot "$chroot_dir" apt-get -qy install \
         sudo
 
 ### generate at least a basic locale
-chroot "$chroot_dir" locale-gen en_US.UTF8
+chroot "$chroot_dir" locale-gen en_US.UTF-8
 
 ### install some newer packages from my PPA
 chroot "$chroot_dir" add-apt-repository -y ppa:cmsj/nintendoswitch
