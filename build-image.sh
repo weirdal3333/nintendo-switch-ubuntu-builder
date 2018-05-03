@@ -342,3 +342,5 @@ tar cfz ${os}_${arch}_${suite}.tgz -C "$chroot_dir" .
 # ### cleanup
 #rm $os_$arch_$suite.tgz
 #rm -rf "$chroot_dir"
+
+echo "Finished building ubuntu rootfs."
