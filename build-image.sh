@@ -339,7 +339,11 @@ rm "$chroot_dir/etc/resolv.conf"
 umount "$chroot_dir/proc"
 
 ### create a tar archive from the chroot directory
-tar cfz "${tarball}" -C "$chroot_dir" .
+TAROPTS="cf"
+if [ "${tarball}" == "*z" ]; then
+    TAROPTS="${TAROPTS}z"
+fi
+tar ${TAROPTS} "${tarball}" -C "$chroot_dir" .
 
 # ### cleanup
 #rm $os_$arch_$suite.tar.gz
