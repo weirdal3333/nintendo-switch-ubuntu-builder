@@ -20,7 +20,7 @@ suite=bionic
 apt_mirror='http://ports.ubuntu.com'
 repositories='main restricted universe multiverse'
 chroot_dir="${1:-/var/chroot/${os}_${arch}_$suite}"
-tarball="${2:-${os}_${arch}_${suite}.tgz}"
+tarball="${2:-${os}_${arch}_${suite}.tar.gz}"
 
 ### make sure that the required tools are installed
 echo "Installing dependencies..."
@@ -342,7 +342,7 @@ umount "$chroot_dir/proc"
 tar cfz "${tarball}" -C "$chroot_dir" .
 
 # ### cleanup
-#rm $os_$arch_$suite.tgz
+#rm $os_$arch_$suite.tar.gz
 #rm -rf "$chroot_dir"
 
 echo "Finished building ubuntu rootfs."
