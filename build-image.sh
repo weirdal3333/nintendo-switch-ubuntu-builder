@@ -20,7 +20,7 @@ suite=bionic
 apt_mirror='http://ports.ubuntu.com'
 repositories='main restricted universe multiverse'
 chroot_dir="${1:-/var/chroot/${os}_${arch}_$suite}"
-tarball="${2:-${os}_${arch}_${suite}.tgz"
+tarball="${2:-${os}_${arch}_${suite}.tgz}"
 
 ### make sure that the required tools are installed
 echo "Installing dependencies..."
@@ -339,7 +339,7 @@ rm "$chroot_dir/etc/resolv.conf"
 umount "$chroot_dir/proc"
 
 ### create a tar archive from the chroot directory
-tar cfz ${tarball} -C "$chroot_dir" .
+tar cfz "${tarball}" -C "$chroot_dir" .
 
 # ### cleanup
 #rm $os_$arch_$suite.tgz
