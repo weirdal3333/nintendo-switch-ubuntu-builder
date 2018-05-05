@@ -340,7 +340,7 @@ umount "$chroot_dir/proc"
 
 ### create a tar archive from the chroot directory
 TAROPTS="cf"
-if [ "${tarball}" == "*z" ]; then
+if [[ "${tarball}" == *z ]]; then
     TAROPTS="${TAROPTS}z"
 fi
 tar ${TAROPTS} "${tarball}" -C "$chroot_dir" .
