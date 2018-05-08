@@ -145,11 +145,18 @@ cat <<EOF > "$chroot_dir/etc/gdm3/custom.conf"
 [daemon]
 AutomaticLoginEnable = true
 AutomaticLogin = switch
+WaylandEnable = false
 [security]
 [xdcmp]
 [chooser]
 [debug]
 EOF
+
+# FIXME: If we can switch from evdev to libinput (see package selection above):
+#cat <<EOF > "$chroot_dir/etc/udev/rules.d/01-nintendo-switch-libinput-matrix.rules"
+#ATTRS{name}=="stmfts", ENV{LIBINPUT_CALIBRATION_MATRIX}="1 0 0 0 1 0"
+#EOF
+#although we'd still need: xinput set-prop stmfts 'libinput Calibration Matrix' 0.567294 0.000000 -0.008776 0.000000 1.848333 -0.025899
 
 # Configuration: touchscreen config
 # https://github.com/fail0verflow/shofel2/blob/master/configs/xinitrc-header.sh
@@ -157,6 +164,13 @@ EOF
 cat <<EOF > "$chroot_dir/etc/X11/Xsession.d/01-nintendo-switch-fixups"
 xinput set-float-prop stmfts 'Coordinate Transformation Matrix' 0 -1 1 1 0 0 0 0 1
 xrandr --output DSI-1 --rotate left
+EOF
+# FIXME: Logs indicate this one works, except it doesn't
+cat <<EOF > "$chroot_dir/usr/share/X11/xorg.conf.d/01-nintendo-switch-screen-rotation.conf"
+Section "Monitor"
+    Identifier "DSI-1"
+    Option  "Rotate"    "left"
+EndSection
 EOF
 
 # FIXME: Not sure if this is actually getting applied. Xorg log suggests yes, but something isn't working
@@ -181,6 +195,12 @@ EOF
 #Exec=/bin/bash -c "sleep 10 && xrandr --output DSI-1 --rotate left"
 #Type=Application
 #EOF
+
+# Configuration: disable crazy ambient backlight
+cat <<EOF > "$chroot_dir/etc/dconf/db/local.d/01-nintendo-switch-disable-ambient-backlight.conf"
+[org/gnome/settings-daemon/plugins/power]
+ambient-enabled=false
+EOF
 
 # Configuration: Add missing firmware definition file for Broadcom driver
 # https://bugzilla.kernel.org/show_bug.cgi?id=185661
