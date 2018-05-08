@@ -335,15 +335,9 @@ EOF
 # Configuration: Capture lots of information onto SD, since I still can't actually execute stuff directly on the Switch
 cat <<EOF > "$chroot_dir/etc/rc.local"
 #!/bin/sh
-journalctl --flush
-ifconfig -a >/tmp/ifconfig.txt
-lsusb >/tmp/lsusb.txt
-lspci >/tmp/lspci.txt
-iw list >/tmp/iw.txt
-journalctl -b >/tmp/syslog.txt
-cat /sys/class/graphics/fb0/modes >/tmp/fb0_modes.txt
-cat /sys/class/drm/card1/device/pstate >/tmp/gpu_pstate.txt
-cat /sys/kernel/debug/dri/1/pstate >>/tmp/gpu_pstate.txt
+# FIXME: Setting the GPU clock should really be a systemd startup job
+pstate_file=$(find /sys/kernel/debug/dri/ -name pstate | head -1)
+echo 0a > $pstate_file
 sync
 EOF
 chmod +x "$chroot_dir/etc/rc.local"
