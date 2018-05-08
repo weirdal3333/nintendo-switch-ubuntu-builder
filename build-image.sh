@@ -113,6 +113,7 @@ chroot "$chroot_dir" locale-gen en_US.UTF-8
 ### install some newer packages from my PPA
 chroot "$chroot_dir" add-apt-repository -y ppa:cmsj/nintendoswitch
 chroot "$chroot_dir" apt-get -qy install libdrm-common libdrm-nouveau2 libdrm2
+chroot "$chroot_dir" apt-get -qy upgrade
 
 ### install RetroArch PPA
 chroot "$chroot_dir" add-apt-repository -y ppa:libretro/stable
