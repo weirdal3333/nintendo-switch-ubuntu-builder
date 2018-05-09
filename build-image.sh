@@ -83,7 +83,7 @@ chroot "$chroot_dir" ln -sf /bin/true /usr/bin/mandb
 # Prepare for later rootfs resize script
 touch "$chroot_dir/.rootfs-repartition"
 touch "$chroot_dir/.rootfs-resize"
-cat <<EOF > "$chroot_dir/usr/sbin/rootfs-resize
+cat <<EOF > "$chroot_dir/usr/sbin/rootfs-resize"
 #!/usr/bin/python2
 #
 #   rootfs-resize :: Resize the root parition and filesytem
@@ -322,7 +322,7 @@ elif os.path.isfile('/.rootfs-resize'):
 EOF
 chmod +x /usr/sbin/rootfs-resize
 
-cat <<EOF >/etc/systemd/system/rootfs-resize.service
+cat <<EOF > "$chroot_dir/etc/systemd/system/rootfs-resize.service"
 [Unit]
 Description=Root Filesystem Auto-Resizer
 
