@@ -88,10 +88,11 @@ cat <<'EOF' > "$chroot_dir/usr/sbin/rootfs-resize"
 #
 #   rootfs-resize :: Resize the root parition and filesytem
 #
-#   Version 2.0       2013-01-11
+#   Version 3.0       2018-05-09
 #
 #   Authors:
 #   Chris Tyler, Seneca College         2013-01-11
+#   Chris Jones                         2018-05-09
 #
 #   This script will increase the size of the root partition by
 #   moving the end of the partition, and then resize the filesystem
@@ -113,8 +114,7 @@ cat <<'EOF' > "$chroot_dir/usr/sbin/rootfs-resize"
 #   command-line option.
 #
 #   6. The file /.rootfs-repartition must exist to start phase 1
-#   (partition adjustment). The system will be rebooted immediately
-#   if the partition adjustment is successful.
+#   (partition adjustment).
 #
 #   7. The file /.rootfs-resize, which is created when the partitions
 #   are adjusted in phase 1, must exist to start phase 2.
@@ -215,6 +215,10 @@ if not disk_device:
 # If /.rootfs-repartition exists, repartition the disk, then reboot
 if os.path.isfile('/.rootfs-repartition'):
 
+    print("Attempting to resize / partition...")
+    print("  / partition    : %s" % root_device)
+    print("  / disk         : %s" % disk_device)
+
     # Create block device and disk label objects
     device = parted.Device(disk_device)
     disk = parted.Disk(device)
@@ -222,7 +226,7 @@ if os.path.isfile('/.rootfs-repartition'):
     # Find root partition and do sanity checks
     root = disk.getPartitionByPath(root_device)
 
-    constraint = device.optimalAlignedConstraint
+    constraint = device.getConstraint()
 
     # Find the proposed end of the root partition.
     # This try/except is a workaround for pyparted ticket #50 -
@@ -239,12 +243,22 @@ if os.path.isfile('/.rootfs-repartition'):
         or root.fileSystem.type == 'ext4' ) \
         and root.geometry.end < new_end:
 
-        disk.setPartitionGeometry(partition = root, constraint = constraint,
-            start = root.geometry.start, end = new_end )
+        newGeom = parted.Geometry(disk.device, start=root.geometry.start, end=new_end)
+        constraint = parted.Constraint(exactGeom=newGeom)
+        maxGeom = disk.calculateMaxPartitionGeometry(partition = root, constraint=constraint)
 
+        disk.setPartitionGeometry(partition = root, constraint = constraint,
+            start = maxGeom.start, end = maxGeom.end)
+
+        print("  Partition type : %s" % root.fileSystem.type)
+        print("  Old start block: %s" % root.geometry.start)
+        print("  Old end block  : %s" % root.geometry.end)
+        print("  New end block  : %s" % new_end)
+        print("")
+        print("Committing partition change...")
         # disk.commit() will usually throw an exception because the kernel
         # is using the rootfs and refuses to accept the new partition table
-        # ... so we reboot
+        # ... so we call partprobe
         try:
             disk.commit()
         except:
@@ -256,12 +270,14 @@ if os.path.isfile('/.rootfs-repartition'):
     # Change flagfiles and reboot
     open('/.rootfs-resize','w').close()
     os.unlink('/.rootfs-repartition')
-    os.system('/sbin/reboot')
+    print("Reloading kernel partition table...")
+    os.system('/sbin/partprobe')
 
 # PHASE 2
 # If /.rootfs-resize exists, resize the filesystem
 elif os.path.isfile('/.rootfs-resize'):
 
+    print("Resizing / to fill partition...")
     # Use ionice if available
     if os.path.isfile('/usr/bin/ionice'):
         os.system('/usr/bin/ionice -c2 -n7 /sbin/resize2fs %s' % root_device )
@@ -325,16 +341,20 @@ chmod +x "$chroot_dir/usr/sbin/rootfs-resize"
 cat <<EOF > "$chroot_dir/etc/systemd/system/rootfs-resize.service"
 [Unit]
 Description=Root Filesystem Auto-Resizer
+DefaultDependencies=no
+After=sysinit.target local-fs.target
+Before=base.target
 
 [Service]
 Environment=TERM=linux
 Type=oneshot
 ExecStart=/usr/sbin/rootfs-resize
-StandardError=syslog
+StandardError=journal+console
+StandardOutput=journal+console
 RemainAfterExit=no
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=base.target
 EOF
 mkdir -p "$chroot_dir/etc/systemd/system/multi-user.target.wants/"
 chroot "$chroot_dir" ln -s /etc/systemd/system/rootfs-resize.service /etc/systemd/system/multi-user.target.wants/
@@ -364,8 +384,8 @@ chroot "$chroot_dir" apt-get -qy install \
         quicksynergy \
         gnome-tweak-tool \
         materia-gtk-theme \
-        python3-parted \
-        python3-psutil \
+        python-parted \
+        python-psutil \
         sudo
 
 ### generate at least a basic locale
