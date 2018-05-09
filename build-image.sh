@@ -336,6 +336,7 @@ RemainAfterExit=no
 [Install]
 WantedBy=multi-user.target
 EOF
+mkdir -p "$chroot_dir/etc/systemd/system/multi-user.target.wants/"
 chroot "$chroot_dir" ln -s /etc/systemd/system/rootfs-resize.service "$chroot_dir/etc/systemd/system/multi-user.target.wants/"
 
 mount -o bind /proc "$chroot_dir/proc"
