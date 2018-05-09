@@ -24,7 +24,7 @@ tarball="${2:-${os}_${arch}_${suite}.tar.gz}"
 
 ### make sure that the required tools are installed
 echo "Installing dependencies..."
-apt-get install -qy debootstrap qemu-user-static
+apt-get install -qy --reinstall debootstrap qemu-user-static
 
 ### Clear chroot_dir to make sure the rebuild is clean
 # This is tp prevent a corrupted chroot dir to break repeated failed
@@ -80,6 +80,264 @@ echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > "
 chroot "$chroot_dir" dpkg-divert --local --rename --add /usr/bin/mandb
 chroot "$chroot_dir" ln -sf /bin/true /usr/bin/mandb
 
+# Prepare for later rootfs resize script
+touch "$chroot_dir/.rootfs-repartition"
+touch "$chroot_dir/.rootfs-resize"
+cat <<EOF > "$chroot_dir/usr/sbin/rootfs-resize
+#!/usr/bin/python2
+#
+#   rootfs-resize :: Resize the root parition and filesytem
+#
+#   Version 2.0       2013-01-11
+#
+#   Authors:
+#   Chris Tyler, Seneca College         2013-01-11
+#
+#   This script will increase the size of the root partition by
+#   moving the end of the partition, and then resize the filesystem
+#   to fill the available space.
+#
+#   Prerequisites for successful operation:
+#   1. The root filesystem must be on a partition (not an LV or other
+#   abstraction) on a /dev/sdX or /dev/mmcblkX device.
+#
+#   2. The root filesystem type must be ext2, ext3, or ext4.
+#
+#   3. There must be room available to increase the size of the
+#   root partition by moving the end. The start of the root partition
+#   will not be moved.
+#
+#   4. The file /.nofsresize must not exist.
+#
+#   5. The kernel must not have been booted with the 'nofsresize'
+#   command-line option.
+#
+#   6. The file /.rootfs-repartition must exist to start phase 1
+#   (partition adjustment). The system will be rebooted immediately
+#   if the partition adjustment is successful.
+#
+#   7. The file /.rootfs-resize, which is created when the partitions
+#   are adjusted in phase 1, must exist to start phase 2.
+#
+#   8. If the file /.swapsize exists when phase 2 is processed,
+#   and it contains a text representation of a non-zero whole number,
+#   and the file /swap0 does not exist, then a swapfile named /swap0
+#   will be created. The size of the swapfile will be the number in
+#   /.swapsize interpreted as megabytes. This swapfile will be added to
+#   /etc/fstab and activated.
+#
+#   Requirements (Fedora package name as of F17):
+#   - python 2.7+ (python)
+#   - pyparted (pyparted)
+#   - psutil (python-psutil)
+#   - /sbin/resize2fs (e2fsprogs)
+#   - /sbin/mkswap (util-linux)
+#
+#   Optional requirements (recommended):
+#   - /usr/bin/ionice (util-linux)
+#   - /sbin/swapon (util-linux)
+
+#   Copyright (C)2013 Chris Tyler, Seneca College, and others
+#   (see Authors, above).
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#   MA  02110-1301  USA
+#
+
+import parted
+import re
+import sys
+import psutil
+import ast
+import os
+import glob
+
+abort_blocked = False;
+
+# Check that the kernel command line parameter 'nofsresize' was NOT specified
+for line in open('/proc/cmdline'):
+    if 'nofsresize' in line:
+        abort_blocked = True
+
+# Check that /.nofsresize is NOT present
+if os.path.isfile('/.nofsresize'):
+    abort_blocked = True
+
+# Abort due to either of the above
+if abort_blocked:
+    sys.exit(1)
+
+# Find the root device
+for line in open('/proc/self/mountinfo'):
+    if '/ / ' in line:
+        root_major_minor = line.split(' ')[2]
+        break
+
+major=int(root_major_minor.split(":")[0])
+minor=int(root_major_minor.split(":")[1])
+
+# We now have the major/minor of the root device.
+# Scan devices to find the corresponding block device.
+# This is necessary because the device name reported in
+# /proc/self/mountinfo may be /dev/root
+root_device = ''
+for blockdev in glob.glob("/dev/sd??*")+glob.glob("/dev/mmcblk*p*"):
+    rdev=os.stat(blockdev).st_rdev
+    if os.major(rdev) == major and os.minor(rdev) == minor:
+        root_device = blockdev
+        break
+
+# If the root device is a partion, find the disk containing it
+disk_device = ''
+for pattern in [ '/dev/sd.', '/dev/mmcblk.' ]:
+    match = re.match(pattern, root_device)
+    if match:
+        disk_device = root_device[:match.span()[1]]
+        break
+
+# Exit if we didn't find a disk_device
+if not disk_device:
+    sys.exit(2)
+
+# PHASE 1
+# If /.rootfs-repartition exists, repartition the disk, then reboot
+if os.path.isfile('/.rootfs-repartition'):
+
+    # Create block device and disk label objects
+    device = parted.Device(disk_device)
+    disk = parted.Disk(device)
+
+    # Find root partition and do sanity checks
+    root = disk.getPartitionByPath(root_device)
+
+    constraint = device.optimalAlignedConstraint
+
+    # Find the proposed end of the root partition.
+    # This try/except is a workaround for pyparted ticket #50 -
+    # see https://fedorahosted.org/pyparted/ticket/50
+    try:
+        new_end = root.getMaxGeometry(constraint).end
+    except TypeError:
+        new_end = root.getMaxGeometry(constraint.getPedConstraint()).end
+
+    # If it's a ext[234] filesystem and the partition end can grow,
+    # change the partition ending and then reboot
+    if (root.fileSystem.type == 'ext2'
+        or root.fileSystem.type == 'ext3'
+        or root.fileSystem.type == 'ext4' ) \
+        and root.geometry.end < new_end:
+
+        disk.setPartitionGeometry(partition = root, constraint = constraint,
+            start = root.geometry.start, end = new_end )
+
+        # disk.commit() will usually throw an exception because the kernel
+        # is using the rootfs and refuses to accept the new partition table
+        # ... so we reboot
+        try:
+            disk.commit()
+        except:
+            pass
+
+    else:
+        print('Unable to resize root partition (max size, or unresizable fs type).')
+
+    # Change flagfiles and reboot
+    open('/.rootfs-resize','w').close()
+    os.unlink('/.rootfs-repartition')
+    os.system('/sbin/reboot')
+
+# PHASE 2
+# If /.rootfs-resize exists, resize the filesystem
+elif os.path.isfile('/.rootfs-resize'):
+
+    # Use ionice if available
+    if os.path.isfile('/usr/bin/ionice'):
+        os.system('/usr/bin/ionice -c2 -n7 /sbin/resize2fs %s' % root_device )
+    else:
+        os.system('/sbin/resize2fs %s' % root_device )
+
+    # Create swap if requested
+    if os.path.isfile('/.swapsize'):
+
+        swapsizefile = open('/.swapsize')
+        try:
+            swapsize = ast.literal_eval(swapsizefile.readline())
+        except:
+            swapsize = 0
+
+        swapsizefile.close()
+
+        # Create /swap0 as a swapfile if it doesn't exist and
+        # the requested size in MB is greater than 0
+        if ( not os.path.isfile('/swap0') ) and swapsize > 0:
+
+            # Lower the I/O priority to minimum best-effort
+            psutil.Process(os.getpid()).set_ionice(psutil.IOPRIO_CLASS_BE, 7)
+
+            # Create swap file as swap0.part (so we recreate if aborted)
+            MB = ' ' * (1024*1024)
+            swapfile = open('/swap0.part','w')
+            for X in range(swapsize):
+                swapfile.write(MB)
+
+            # Make it a swapfile
+            os.system('/sbin/mkswap /swap0.part')
+
+            # Rename the swapfile to /swap0
+            os.rename('/swap0.part','/swap0')
+
+        # Add /swap0 to the fstab if not already present
+        abort_fstab = False
+        for line in open('/etc/fstab'):
+            if re.match('/swap0', line):
+                abort_fstab = True
+                break
+
+        if not abort_fstab:
+            fstab = open('/etc/fstab','a')
+            fstab.write('/swap0\t\t\tswap\tswap\n')
+            fstab.close()
+
+        # Activate all swap spaces if possible
+        if os.path.isfile('/sbin/swapon'):
+            os.system('/sbin/swapon -a')
+
+        # Delete swap flagfile
+        os.unlink('/.swapsize')
+
+    # Delete resize flagfile
+    os.unlink('/.rootfs-resize')
+EOF
+chmod +x /usr/sbin/rootfs-resize
+
+cat <<EOF >/etc/systemd/system/rootfs-resize.service
+[Unit]
+Description=Root Filesystem Auto-Resizer
+
+[Service]
+Environment=TERM=linux
+Type=oneshot
+ExecStart=/usr/sbin/rootfs-resize
+StandardError=syslog
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
+EOF
+chroot "$chroot_dir" ln -s /etc/systemd/system/rootfs-resize.service /etc/systemd/system/multi-user.target.wants/
+
 mount -o bind /proc "$chroot_dir/proc"
 
 ### install ubuntu-desktop
@@ -96,7 +354,7 @@ chroot "$chroot_dir" apt-get -qy install \
         accountsservice \
         xserver-xorg-core \
         xserver-xorg \
-        xserver-xorg-input-evdev \
+        xserver-xorg-input-libinput \
         xserver-xorg-video-nouveau \
         linux-firmware \
         libgl1-mesa-dri \
@@ -105,6 +363,8 @@ chroot "$chroot_dir" apt-get -qy install \
         quicksynergy \
         gnome-tweak-tool \
         materia-gtk-theme \
+        python3-parted \
+        python3-psutil \
         sudo
 
 ### generate at least a basic locale
@@ -152,51 +412,49 @@ WaylandEnable = false
 [debug]
 EOF
 
-# FIXME: If we can switch from evdev to libinput (see package selection above):
-#cat <<EOF > "$chroot_dir/etc/udev/rules.d/01-nintendo-switch-libinput-matrix.rules"
-#ATTRS{name}=="stmfts", ENV{LIBINPUT_CALIBRATION_MATRIX}="1 0 0 0 1 0"
-#EOF
-#although we'd still need: xinput set-prop stmfts 'libinput Calibration Matrix' 0.567294 0.000000 -0.008776 0.000000 1.848333 -0.025899
-
 # Configuration: touchscreen config
-# https://github.com/fail0verflow/shofel2/blob/master/configs/xinitrc-header.sh
-# FIXME: Not sure if this is actually getting applied.
-cat <<EOF > "$chroot_dir/etc/X11/Xsession.d/01-nintendo-switch-fixups"
-xinput set-float-prop stmfts 'Coordinate Transformation Matrix' 0 -1 1 1 0 0 0 0 1
-xrandr --output DSI-1 --rotate left
-EOF
-# FIXME: Logs indicate this one works, except it doesn't
-cat <<EOF > "$chroot_dir/usr/share/X11/xorg.conf.d/01-nintendo-switch-screen-rotation.conf"
-Section "Monitor"
-    Identifier "DSI-1"
-    Option  "Rotate"    "left"
-EndSection
+cat <<EOF > "$chroot_dir/etc/udev/rules.d/01-nintendo-switch-libinput-matrix.rules"
+ATTRS{name}=="stmfts", ENV{LIBINPUT_CALIBRATION_MATRIX}="0.567294 0.000000 -0.008776 0.000000 1.848333 -0.025899"
 EOF
 
-# FIXME: Not sure if this is actually getting applied. Xorg log suggests yes, but something isn't working
-cat <<EOF > "$chroot_dir/usr/share/X11/xorg.conf.d/99-nintendo-switch-touchscreen.conf"
-Section "InputClass"
-        Identifier "evdev touchscreen catchall"
-        MatchIsTouchscreen "on"
-        MatchDevicePath "/dev/input/event*"
-        Driver "evdev"
-        Option "InvertX" "no"
-        Option "InvertY" "yes"
-        Option "SwapAxes" "yes"
-        Option "Calibration" "0 1279 0 719"
-EndSection
+mkdir -p "$chroot_dir/home/switch/.config"
+cat <<EOF > "$chroot_dir/home/switch/.config/monitors.xml"
+<monitors version="2">
+  <configuration>
+    <logicalmonitor>
+      <x>0</x>
+      <y>0</y>
+      <scale>1</scale>
+      <primary>yes</primary>
+      <transform>
+        <rotation>left</rotation>
+        <flipped>no</flipped>
+      </transform>
+      <monitor>
+        <monitorspec>
+          <connector>DSI-1</connector>
+          <vendor>unknown</vendor>
+          <product>unknown</product>
+          <serial>unknown</serial>
+        </monitorspec>
+        <mode>
+          <width>720</width>
+          <height>1280</height>
+          <rate>60</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+  </configuration>
+</monitors>
 EOF
+chroot "$chroot_dir" chmod -R switch:switch /home/switch/.config
 
-# FIXME: Above didn't work, so there's a hack below
-# FIXME: This sucks, and since the touch input is still wrong, this doesn't help very much
-#cat <<EOF > "$chroot_dir/etc/xdg/autostart/switch-rotate.desktop"
-#[Desktop Entry]
-#Name=Set Screen Rotation
-#Exec=/bin/bash -c "sleep 10 && xrandr --output DSI-1 --rotate left"
-#Type=Application
-#EOF
+mkdir -p "$chroot_dir/var/lib/gdm3/.config"
+cp "$chroot_dir/home/switch/.config/monitors.xml" "$chroot_dir/var/lib/gdm3/.config"
+chroot "$chroot_dir" chmod -R gdm:gdm /var/lib/gdm3/.config
 
 # Configuration: disable crazy ambient backlight
+mkdir -p "$chroot_dir/etc/dconf/db/local.d"
 cat <<EOF > "$chroot_dir/etc/dconf/db/local.d/01-nintendo-switch-disable-ambient-backlight.conf"
 [org/gnome/settings-daemon/plugins/power]
 ambient-enabled=false
