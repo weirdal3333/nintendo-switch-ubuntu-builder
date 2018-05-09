@@ -275,7 +275,7 @@ if os.path.isfile('/.rootfs-repartition'):
 
 # PHASE 2
 # If /.rootfs-resize exists, resize the filesystem
-elif os.path.isfile('/.rootfs-resize'):
+if os.path.isfile('/.rootfs-resize'):
 
     print("Resizing / to fill partition...")
     # Use ionice if available
