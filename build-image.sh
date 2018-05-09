@@ -415,7 +415,7 @@ EOF
 
 # Configuration: touchscreen config
 cat <<EOF > "$chroot_dir/etc/udev/rules.d/01-nintendo-switch-libinput-matrix.rules"
-ATTRS{name}=="stmfts", ENV{LIBINPUT_CALIBRATION_MATRIX}="0.567294 0.000000 -0.008776 0.000000 1.848333 -0.025899"
+ATTRS{name}=="stmfts", ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1"
 EOF
 
 mkdir -p "$chroot_dir/home/switch/.config"
