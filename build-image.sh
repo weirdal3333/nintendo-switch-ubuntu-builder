@@ -448,11 +448,11 @@ cat <<EOF > "$chroot_dir/home/switch/.config/monitors.xml"
   </configuration>
 </monitors>
 EOF
-chroot "$chroot_dir" chmod -R switch:switch /home/switch/.config
+chroot "$chroot_dir" chown -R 1000:1000 /home/switch/.config
 
 mkdir -p "$chroot_dir/var/lib/gdm3/.config"
 cp "$chroot_dir/home/switch/.config/monitors.xml" "$chroot_dir/var/lib/gdm3/.config"
-chroot "$chroot_dir" chmod -R gdm:gdm /var/lib/gdm3/.config
+chroot "$chroot_dir" chown -R gdm:gdm /var/lib/gdm3/.config
 
 # Configuration: disable crazy ambient backlight
 mkdir -p "$chroot_dir/etc/dconf/db/local.d"
