@@ -83,7 +83,7 @@ chroot "$chroot_dir" ln -sf /bin/true /usr/bin/mandb
 # Prepare for later rootfs resize script
 touch "$chroot_dir/.rootfs-repartition"
 touch "$chroot_dir/.rootfs-resize"
-cat <<EOF > "$chroot_dir/usr/sbin/rootfs-resize"
+cat <<'EOF' > "$chroot_dir/usr/sbin/rootfs-resize"
 #!/usr/bin/python2
 #
 #   rootfs-resize :: Resize the root parition and filesytem
