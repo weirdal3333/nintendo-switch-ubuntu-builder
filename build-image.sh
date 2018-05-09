@@ -320,7 +320,7 @@ elif os.path.isfile('/.rootfs-resize'):
     # Delete resize flagfile
     os.unlink('/.rootfs-resize')
 EOF
-chmod +x /usr/sbin/rootfs-resize
+chmod +x "$chroot_dir/usr/sbin/rootfs-resize"
 
 cat <<EOF > "$chroot_dir/etc/systemd/system/rootfs-resize.service"
 [Unit]
