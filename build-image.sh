@@ -592,7 +592,7 @@ rssicorrnorm5g_c1=1,2,3,2,2,2,7,7,8,7,7,8
 EOF
 
 # Configuration: Capture lots of information onto SD, since I still can't actually execute stuff directly on the Switch
-cat <<EOF > "$chroot_dir/etc/rc.local"
+cat <<'EOF' > "$chroot_dir/etc/rc.local"
 #!/bin/sh
 # FIXME: Setting the GPU clock should really be a systemd startup job
 pstate_file=$(find /sys/kernel/debug/dri/ -name pstate | head -1)
