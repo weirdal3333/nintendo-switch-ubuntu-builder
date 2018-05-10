@@ -652,9 +652,7 @@ chmod +x "$chroot_dir/usr/local/bin/gpu_power.sh"
 cat <<'EOF' > "$chroot_dir/etc/rc.local"
 #!/bin/sh
 # FIXME: Setting the GPU clock should really be a systemd startup job
-pstate_file=$(find /sys/kernel/debug/dri/ -name pstate | head -1)
-echo 04 > $pstate_file
-sync
+/sbin/udevadm trigger -s power_supply
 EOF
 chmod +x "$chroot_dir/etc/rc.local"
 
