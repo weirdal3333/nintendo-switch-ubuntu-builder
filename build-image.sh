@@ -388,8 +388,11 @@ chroot "$chroot_dir" apt-get -qy install \
         python-psutil \
         sudo
 
+### remove Amazon spyware
+chroot "$chroot_dir" apt-get remove ubuntu-web-launchers
+
 ### generate at least a basic locale
-chroot "$chroot_dir" locale-gen en_US.UTF-8
+chroot "$chroot_dir" locale-gen en_GB.UTF-8 en_US.UTF-8
 
 ### install some newer packages from my PPA
 chroot "$chroot_dir" add-apt-repository -y ppa:cmsj/nintendoswitch
