@@ -611,7 +611,44 @@ rssicorrnorm5g_c0=1,2,3,1,2,3,6,6,8,6,6,8
 rssicorrnorm5g_c1=1,2,3,2,2,2,7,7,8,7,7,8
 EOF
 
-# Configuration: Capture lots of information onto SD, since I still can't actually execute stuff directly on the Switch
+# Configuration: Configure GPU clock automatically based on power source state
+cat <<'EOF' > "$chroot_dir/etc/udev/rules.d/02-nintendo-switch-gpu-power.rules"
+SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_NAME}=="bq24190-charger", ENV{POWER_SUPPLY_ONLINE}=="1", RUN+="/usr/local/bin/gpu_power.sh high"
+SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_NAME}=="bq24190-charger", ENV{POWER_SUPPLY_ONLINE}=="0", RUN+="/usr/local/bin/gpu_power.sh medium"
+EOF
+
+cat <<'EOF' > "$chroot_dir/usr/local/bin/gpu_power.sh"
+#!/bin/bash
+
+VALUE="04"
+
+case $1 in
+  "--help")
+    echo "Usage: $0 [low|medium|high]"
+    echo "  low    - underclock GPU (153MHz)"
+    echo "  medium - normal GPU speed (307MHz)"
+    echo "  high   - docked GPU speed (768MHz)"
+    exit 0
+    ;;
+  "low")
+    VALUE="02"
+    ;;
+  "medium")
+    VALUE="04"
+    ;;
+  "high")
+    VALUE="0a"
+    ;;
+  *)
+    echo "Your input was not recognised, assuming 'medium'"
+    ;;
+esac
+
+pstate_file=$(find /sys/kernel/debug/dri/ -name pstate | head -1)
+echo "${VALUE}" > $pstate_file
+EOF
+chmod +x "$chroot_dir/usr/local/bin/gpu_power.sh"
+
 cat <<'EOF' > "$chroot_dir/etc/rc.local"
 #!/bin/sh
 # FIXME: Setting the GPU clock should really be a systemd startup job
